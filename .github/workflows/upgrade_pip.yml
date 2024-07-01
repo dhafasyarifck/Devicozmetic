@@ -1,0 +1,23 @@
+name: Upgrade Pip
+
+on:
+  push:
+    branches:
+      - master  # Atur branch yang ingin Anda pantau perubahannya
+
+jobs:
+  upgrade-pip:
+    runs-on: ubuntu-latest  # Atur sistem operasi yang digunakan
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'  # Ganti dengan versi Python yang Anda gunakan
+
+      - name: Upgrade pip
+        run: |
+          python -m pip install --upgrade pip
