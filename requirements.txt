@@ -1,0 +1,10 @@
+streamlit
+mysql.connector
+pandas
+sklearn
+joblib
+mysql.connector
+matplotlib.pyplot
+seaborn
+option_menu
+date

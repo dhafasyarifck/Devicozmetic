@@ -1,0 +1,1 @@
+web: streamlit run devicozmetic.py
