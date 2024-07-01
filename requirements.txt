@@ -1,9 +1,7 @@
-streamlit
-mysql.connector
-pandas
-scikit-learn
-joblib
-matplotlib
-seaborn
-option_menu
-date
+streamlit==1.36.0
+mysql.connector==2.2.9
+pandas==2.2.2
+scikit-learn==1.5.0
+joblib==1.4.2
+matplotlib==3.9.0
+seaborn==0.13.2
