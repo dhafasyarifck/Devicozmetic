@@ -1,7 +1,7 @@
 streamlit
 mysql.connector
 pandas
-sklearn
+scikit-learn
 joblib
 mysql.connector
 matplotlib.pyplot
