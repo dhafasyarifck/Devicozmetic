@@ -3,8 +3,8 @@ mysql.connector
 pandas
 scikit-learn
 joblib
-mysql.connector
 matplotlib.pyplot
+matplotlib
 seaborn
 option_menu
 date
