@@ -143,10 +143,10 @@ def show_halaman_trainingmodel():
                 
                 # Simpan model SVM dan Decision Tree ke dalam history_model
                 conn = mysql.connector.connect(
-                    host='localhost',
-                    user='root',
-                    password='',
-                    database='devicozmetic'
+                   host="sql12.freemysqlhosting.net",
+                    user="sql12721204",
+                    password="t4itLMeUj2",
+                    database="sql12721204"
                 )
                 
                 save_model_to_history(svm_model, 'svm_model', conn)
