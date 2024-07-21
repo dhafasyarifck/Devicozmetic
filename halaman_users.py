@@ -3,10 +3,10 @@ import mysql.connector
 
 def get_db_connection():
     conn = mysql.connector.connect(
-        host='localhost',
-        user='root',
-        password='',
-        database='devicozmetic'
+       host="sql12.freemysqlhosting.net",
+            user="sql12721204",
+            password="t4itLMeUj2",
+            database="sql12721204"
     )
     return conn
 
