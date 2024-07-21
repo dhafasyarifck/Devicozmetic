@@ -9,6 +9,8 @@ import mysql.connector
 from datetime import date
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.metrics import roc_curve, auc
 
 # Fungsi untuk menyimpan model ke dalam tabel history_model di database MySQL
 def save_model_to_history(model, model_name, conn):
@@ -81,6 +83,42 @@ def plot_model_comparison(svm_report, dt_report):
     plt.legend()
     st.pyplot(fig)
 
+# Fungsi untuk melakukan K-Fold Cross-Validation
+def perform_cross_validation(model, X, y):
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    scores = cross_val_score(model, X, y, cv=cv, scoring='accuracy')
+    return scores
+
+# Fungsi untuk menampilkan ROC Curve
+def plot_roc_curve(model, X_test, y_test, model_name):
+    try:
+        # Check if model supports predict_proba
+        if hasattr(model, "predict_proba"):
+            y_score = model.predict_proba(X_test)[:, 1]
+        else:
+            # Use decision function for SVC if predict_proba is not available
+            y_score = model.decision_function(X_test)
+
+        # Tentukan pos_label sesuai dengan kelas target Anda
+        pos_label = 'Laris'  # Sesuaikan dengan label yang Anda tentukan sebagai positif
+
+        fpr, tpr, _ = roc_curve(y_test, y_score, pos_label=pos_label)
+        roc_auc = auc(fpr, tpr)
+        
+        fig, ax = plt.subplots()
+        plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title(f'ROC Curve - {model_name}')
+        plt.legend(loc="lower right")
+        st.pyplot(fig)
+
+    except Exception as e:
+        st.error(f"Error plotting ROC curve: {e}")
+
 # Fungsi untuk membangun halaman training model dan menyimpan model ke dalam history_model
 def show_halaman_trainingmodel():
     st.title("Training Model")
@@ -93,7 +131,7 @@ def show_halaman_trainingmodel():
         df = pd.read_csv(uploaded_file)
         
         # Memilih kolom yang diperlukan
-        features = ['Jumlah_Penjualan', 'Harga_Awal', 'Total Diskon', 'Diskon Dari Penjual']
+        features = ['Jumlah_Penjualan', 'Harga_Awal', 'Total Diskon', 'Rating','Total Harga Produk']
         target = 'Status'
         
         # Memisahkan fitur dan target
@@ -107,7 +145,7 @@ def show_halaman_trainingmodel():
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
                 
                 # Training model SVM
-                svm_model = SVC(kernel='linear')
+                svm_model = SVC(kernel='linear', probability=True)
                 svm_model.fit(X_train, y_train)
                 
                 # Training model Decision Tree
@@ -136,6 +174,14 @@ def show_halaman_trainingmodel():
                 plot_confusion_matrix(dt_cm, "Confusion Matrix - Decision Tree")
                 st.write("Classification Report:")
                 st.write(classification_report(y_test, dt_pred))
+
+                # Tampilkan ROC Curve untuk model SVM
+                st.subheader("ROC Curve - SVM")
+                plot_roc_curve(svm_model, X_test, y_test, "SVM")
+
+                # Tampilkan ROC Curve untuk model Decision Tree
+                st.subheader("ROC Curve - Decision Tree")
+                plot_roc_curve(dt_model, X_test, y_test, "Decision Tree")
                 
                 # Tampilkan perbandingan performa model
                 st.subheader("Perbandingan Performa Model")
@@ -143,10 +189,10 @@ def show_halaman_trainingmodel():
                 
                 # Simpan model SVM dan Decision Tree ke dalam history_model
                 conn = mysql.connector.connect(
-                   host="sql12.freemysqlhosting.net",
+                    host="sql12.freemysqlhosting.net",
                     user="sql12721204",
                     password="t4itLMeUj2",
-                    database="sql12721204"
+                    database="sql12721204" 
                 )
                 
                 save_model_to_history(svm_model, 'svm_model', conn)

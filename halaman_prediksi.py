@@ -3,76 +3,107 @@ import pandas as pd
 import joblib
 import mysql.connector
 from datetime import date
-from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import confusion_matrix, classification_report
-from sklearn.model_selection import train_test_split
+from io import BytesIO
 
-# Load the SVM and Decision Tree models
-svm_model = joblib.load('svm_model.joblib')
-dt_model = joblib.load('decision_tree_model.joblib')
-
-# Fungsi untuk menyimpan hasil prediksi ke dalam tabel hasil_prediksi di database MySQL
-def save_prediction_to_db(jumlah_penjualan, harga_awal, total_diskon, diskon_dari_penjual, svm_prediction, dt_prediction, conn):
+# Fungsi untuk memuat model terbaru dari tabel history_model di database MySQL
+def load_latest_model(conn, model_name):
     try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT model_binary FROM history_model WHERE model_name = %s ORDER BY training_date DESC LIMIT 1", (model_name,))
+        result = cursor.fetchone()
+        cursor.close()
+
+        if result:
+            model_binary = result['model_binary']
+            # Gunakan BytesIO untuk membaca model binary
+            model_io = BytesIO(model_binary)
+            model = joblib.load(model_io)
+            return model
+        else:
+            st.error(f"Tidak ada model {model_name} ditemukan di history_model.")
+            return None
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        return None
+
+# Fungsi untuk memprediksi dan menyimpan hasil prediksi ke dalam tabel prediksi
+def predict_and_save_data(model, data, product_names, conn, model_name):
+    try:
+        predictions = model.predict(data)
+        product_names['Predicted Sales'] = predictions
+        product_names['Status'] = f'Predicted by {model_name}'  # Menambahkan kolom status dengan nama model
+
+        st.subheader("Hasil Prediksi")
+        st.write(product_names)
+
+        # Simpan hasil prediksi ke dalam tabel prediksi
         cursor = conn.cursor()
         today = date.today().isoformat()
-        cursor.execute("""
-            INSERT INTO hasil_prediksi 
-            (tanggal_prediksi, jumlah_penjualan, harga_awal, total_diskon, diskon_dari_penjual, prediksi_svm, prediksi_decision_tree) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-            (today, jumlah_penjualan, harga_awal, total_diskon, diskon_dari_penjual, svm_prediction, dt_prediction))
+        for i, row in product_names.iterrows():
+            cursor.execute(
+                "INSERT INTO prediksi (nama_barang, jumlah_penjualan, harga_awal, total_diskon, rating, total_harga_produk, predicted_sales, prediction_date, status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (
+                    row['Nama Barang'], data.iloc[i]['Jumlah_Penjualan'], data.iloc[i]['Harga_Awal'], 
+                    data.iloc[i]['Total Diskon'], data.iloc[i]['Rating'], data.iloc[i]['Total Harga Produk'],
+                    row['Predicted Sales'], today, row['Status']
+                )
+            )
         conn.commit()
         cursor.close()
-        st.success("Hasil prediksi berhasil disimpan ke dalam database.")
+
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error predicting and saving data: {e}")
 
-# Fungsi untuk menampilkan halaman prediksi produk
-def show_data_prediksi_produk(conn):
-    st.subheader("Data Prediksi Produk")
-    st.write("Isi data untuk diprediksi:")
-    jumlah_penjualan = st.number_input("Jumlah Penjualan")
-    harga_awal = st.number_input("Harga Awal")
-    total_diskon = st.number_input("Total Diskon")
-    diskon_dari_penjual = st.number_input("Diskon Dari Penjual")
-    
-    # Tombol untuk memicu prediksi
-    if st.button("Predict"):
-        # Membuat DataFrame dari data baru
-        new_data = {'Jumlah_Penjualan': [jumlah_penjualan], 
-                    'Harga_Awal': [harga_awal], 
-                    'Total Diskon': [total_diskon], 
-                    'Diskon Dari Penjual': [diskon_dari_penjual]}
-        new_data_df = pd.DataFrame(new_data)
-        
-        # Prediksi dengan model SVM
-        svm_prediction = svm_model.predict(new_data_df)
-        
-        # Prediksi dengan model Decision Tree
-        dt_prediction = dt_model.predict(new_data_df)
-        
-        st.subheader("Hasil Prediksi")
-        st.write("Prediksi SVM:", svm_prediction[0])
-        st.write("Prediksi Decision Tree:", dt_prediction[0])
-        
-        # Simpan hasil prediksi ke dalam database
-        save_prediction_to_db(jumlah_penjualan, harga_awal, total_diskon, diskon_dari_penjual, svm_prediction[0], dt_prediction[0], conn)
-
-# Fungsi utama untuk menampilkan halaman prediksi produk
+# Fungsi untuk menampilkan halaman prediksi
 def show_halaman_prediksi():
-    st.title("Halaman Prediksi Produk")
-    
-    # Koneksi ke database MySQL
-    conn = mysql.connector.connect(
-       host="sql12.freemysqlhosting.net",
+    st.title("Prediksi Barang Baru")
+
+    # Input manual untuk data produk
+    nama_barang = st.text_input("Nama Barang")
+    jumlah_penjualan = st.number_input("Jumlah Penjualan", min_value=0, value=0)
+    harga_awal = st.number_input("Harga Awal", min_value=0.0, value=0.0)
+    total_diskon = st.number_input("Total Diskon", min_value=0.0, value=0.0)
+    rating = st.number_input("Rating", min_value=0.0, max_value=5.0, value=0.0)
+    total_harga_produk = st.number_input("Total Harga Produk", min_value=0.0, value=0.0)
+
+    # Pilih model untuk prediksi
+    model_choice = st.selectbox("Pilih Model untuk Prediksi", ["SVM", "Decision Tree"])
+
+    if st.button("Prediksi"):
+        # Masukkan data input ke dalam DataFrame
+        data = pd.DataFrame({
+            'Jumlah_Penjualan': [jumlah_penjualan],
+            'Harga_Awal': [harga_awal],
+            'Total Diskon': [total_diskon],
+            'Rating': [rating],
+            'Total Harga Produk': [total_harga_produk]
+        })
+
+        product_names = pd.DataFrame({'Nama Barang': [nama_barang]})
+
+        # Koneksi ke database
+        conn = mysql.connector.connect(
+            host="sql12.freemysqlhosting.net",
             user="sql12721204",
             password="t4itLMeUj2",
-            database="sql12721204"
-    )
-    
-    show_data_prediksi_produk(conn)
+            database="sql12721204" 
+        )
 
-# Panggil fungsi main untuk menjalankan aplikasi
-if __name__ == '__main__':
-    show_halaman_prediksi()
+        # Muat model terbaru
+        svm_model = load_latest_model(conn, 'svm_model')
+        dt_model = load_latest_model(conn, 'decision_tree_model')
+
+        # Pilih model untuk prediksi
+        if model_choice == "SVM":
+            selected_model = svm_model
+        else:
+            selected_model = dt_model
+
+        # Lakukan prediksi dan simpan hasilnya
+        if selected_model:
+            predict_and_save_data(selected_model, data, product_names, conn, model_choice)
+        else:
+            st.error("Model belum dimuat.")
+
+# Panggil fungsi untuk menampilkan halaman prediksi
+show_halaman_prediksi()

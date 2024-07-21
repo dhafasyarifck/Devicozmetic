@@ -6,9 +6,9 @@ import base64
 def connect_to_db():
     return mysql.connector.connect(
         host="sql12.freemysqlhosting.net",
-            user="sql12721204",
-            password="t4itLMeUj2",
-            database="sql12721204"
+        user="sql12721204",
+        password="t4itLMeUj2",
+        database="sql12721204" 
     )
 
 # Fungsi untuk membaca data dari tabel analisis_barang
@@ -19,7 +19,7 @@ def read_analisis_barang(conn):
 
 # Fungsi untuk membaca data dari tabel hasil_prediksi
 def read_hasil_prediksi(conn):
-    query = "SELECT * FROM hasil_prediksi"
+    query = "SELECT * FROM prediksi"
     df = pd.read_sql(query, conn)
     return df
 
@@ -42,7 +42,7 @@ def show_halaman_laporan():
     df_history_model = read_history_model(conn)
     
     # Tampilkan data dalam bentuk tabel di Streamlit
-    st.subheader("Tabel Analisis Barang")
+    st.subheader("Tabel Analisis Penjualan")
     st.dataframe(df_analisis_barang)
 
     st.subheader("Tabel Hasil Prediksi")

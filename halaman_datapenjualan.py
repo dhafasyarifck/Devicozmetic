@@ -10,7 +10,7 @@ def read_csv_file(file):
     return df
 
 # Fungsi untuk menentukan barang laris atau tidak laris
-def determine_popularity(df, threshold_jumlah, threshold_harga):
+def determine_popularity(df, threshold_jumlah, threshold_harga, threshold_diskon, threshold_rating):
     # Menghitung beberapa fitur relevan
     df['Total Diskon'] = pd.to_numeric(df['Total Diskon'], errors='coerce').fillna(0)
     df['Diskon Dari Penjual'] = pd.to_numeric(df['Diskon Dari Penjual'], errors='coerce').fillna(0)
@@ -23,13 +23,16 @@ def determine_popularity(df, threshold_jumlah, threshold_harga):
         'Total Diskon': 'mean',
         'Diskon Dari Penjual': 'mean',
         'Harga Setelah Diskon': 'mean',
-        'Total Harga Produk': 'mean'
+        'Total Harga Produk': 'mean',
+        'Rating': 'mean'
     }).reset_index()
     
     # Tentukan barang laris atau tidak laris berdasarkan threshold yang dipilih
     penjualan_produk['Status'] = np.where(
         (penjualan_produk['Jumlah_Penjualan'] >= threshold_jumlah) & 
-        (penjualan_produk['Harga_Awal'] >= threshold_harga),
+        (penjualan_produk['Harga_Awal'] >= threshold_harga) &
+        (penjualan_produk['Total Diskon'] >= threshold_diskon) &
+        (penjualan_produk['Rating'] >= threshold_rating),
         'Laris', 'Tidak Laris'
     )
     
@@ -42,7 +45,7 @@ def save_to_db(df, penjualan_produk):
             host="sql12.freemysqlhosting.net",
             user="sql12721204",
             password="t4itLMeUj2",
-            database="sql12721204"
+            database="sql12721204" # Ganti dengan nama database Anda
         )
         cursor = conn.cursor()
         
@@ -57,6 +60,7 @@ def save_to_db(df, penjualan_produk):
                 diskon_dari_penjual FLOAT,
                 harga_setelah_diskon FLOAT,
                 total_harga_produk FLOAT,
+                rating FLOAT,
                 status VARCHAR(10)
             )
         """)
@@ -64,8 +68,8 @@ def save_to_db(df, penjualan_produk):
         # Masukkan data ke dalam tabel
         for idx, row in penjualan_produk.iterrows():
             cursor.execute("""
-                INSERT INTO analisis_barang (nama_produk, jumlah_penjualan, harga_awal, total_diskon, diskon_dari_penjual, harga_setelah_diskon, total_harga_produk, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO analisis_barang (nama_produk, jumlah_penjualan, harga_awal, total_diskon, diskon_dari_penjual, harga_setelah_diskon, total_harga_produk, rating, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE 
                     jumlah_penjualan=VALUES(jumlah_penjualan),
                     harga_awal=VALUES(harga_awal),
@@ -73,8 +77,9 @@ def save_to_db(df, penjualan_produk):
                     diskon_dari_penjual=VALUES(diskon_dari_penjual),
                     harga_setelah_diskon=VALUES(harga_setelah_diskon),
                     total_harga_produk=VALUES(total_harga_produk),
+                    rating=VALUES(rating),
                     status=VALUES(status)
-            """, (row['Nama_Produk'], row['Jumlah_Penjualan'], row['Harga_Awal'], row['Total Diskon'], row['Diskon Dari Penjual'], row['Harga Setelah Diskon'], row['Total Harga Produk'], row['Status']))
+            """, (row['Nama_Produk'], row['Jumlah_Penjualan'], row['Harga_Awal'], row['Total Diskon'], row['Diskon Dari Penjual'], row['Harga Setelah Diskon'], row['Total Harga Produk'], row['Rating'], row['Status']))
 
         conn.commit()
         st.success("Data berhasil disimpan ke database!")
@@ -104,14 +109,18 @@ def show_halaman_datapenjualan():
             # Handle missing values and compute max values
             max_jumlah = int(df['Jumlah_Penjualan'].max() if not pd.isnull(df['Jumlah_Penjualan']).all() else 0)
             max_harga = float(df['Harga_Awal'].max() if not pd.isnull(df['Harga_Awal']).all() else 0.0)
+            max_diskon = float(df['Total Diskon'].max() if not pd.isnull(df['Total Diskon']).all() else 0.0)
+            max_rating = float(df['Rating'].max() if not pd.isnull(df['Rating']).all() else 0.0)
             
             # Kontrol untuk memilih nilai threshold
             st.sidebar.subheader('Pilih Threshold')
             threshold_jumlah = st.sidebar.slider('Threshold Jumlah Penjualan', min_value=0, max_value=max_jumlah, value=int(np.median(df['Jumlah_Penjualan'].fillna(0))))
             threshold_harga = st.sidebar.slider('Threshold Harga_Awal', min_value=0.0, max_value=max_harga, value=np.median(df['Harga_Awal'].fillna(0.0)))
+            threshold_diskon = st.sidebar.slider('Threshold Total Diskon', min_value=0.0, max_value=max_diskon, value=np.median(df['Total Diskon'].fillna(0.0)))
+            threshold_rating = st.sidebar.slider('Threshold Rating', min_value=0.0, max_value=max_rating, value=np.median(df['Rating'].fillna(0.0)))
             
             # Analisis untuk menentukan barang laris atau tidak laris
-            penjualan_produk = determine_popularity(df, threshold_jumlah, threshold_harga)
+            penjualan_produk = determine_popularity(df, threshold_jumlah, threshold_harga, threshold_diskon, threshold_rating)
             
             # Hitung jumlah barang berstatus "Laris" dan "Tidak Laris"
             count_laris = penjualan_produk[penjualan_produk['Status'] == 'Laris'].shape[0]
@@ -130,7 +139,7 @@ def show_halaman_datapenjualan():
             if st.button(f"Simpan ke Database {file.name}"):
                 save_to_db(df, penjualan_produk)
             
-           # Visualisasi data dengan Pie Chart
+            # Visualisasi data dengan Pie Chart
             fig = px.pie(penjualan_produk, names='Status', title=f'Proporsi Barang Laris/Tidak Laris dari File: {file.name}', 
                         labels={'Status': 'Status Barang'})
             st.plotly_chart(fig)
