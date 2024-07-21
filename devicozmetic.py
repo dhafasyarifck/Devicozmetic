@@ -1,61 +1,40 @@
-# app.py
-
 import streamlit as st
-import mysql.connector
-from admin import admin_panel
-from pemilik_toko import pemilik_toko_panel
+import pandas as pd
 
-# Koneksi ke database
-conn = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="",
-    database="devicozmetic"
-)
-cursor = conn.cursor()
+# Title of the application
+st.title("Simple Streamlit App")
 
-# Streamlit UI untuk aplikasi utama
-def main():
-    st.title("Aplikasi Devicozmetics")
+# Sidebar for navigation
+menu = ["Home", "Data", "About"]
+choice = st.sidebar.selectbox("Menu", menu)
 
-    # Cek status login
-    if "username" not in st.session_state:
-        login_form()
-    else:
-        level = st.session_state["level"]
-        if level == 'admin':
-            admin_panel()  # Panggil fungsi admin_panel() dari admin.py
-        elif level == 'Pemilik_toko':
-            pemilik_toko_panel()  # Panggil fungsi pemilik_toko_panel() dari pemilik_toko.py
+if choice == "Home":
+    st.subheader("Home")
+    st.write("Welcome to the simple Streamlit app.")
 
-def login_form():
-    st.subheader("Login")
+elif choice == "Data":
+    st.subheader("Data")
+    
+    # Sample data
+    data = {
+        'Name': ['Alice', 'Bob', 'Charlie', 'David'],
+        'Age': [24, 27, 22, 32],
+        'City': ['New York', 'San Francisco', 'Los Angeles', 'Chicago']
+    }
+    df = pd.DataFrame(data)
+    
+    st.write("Here is some sample data:")
+    st.dataframe(df)
+    
+    # File upload functionality
+    uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
+    if uploaded_file is not None:
+        data = pd.read_csv(uploaded_file)
+        st.write("Uploaded Data:")
+        st.dataframe(data)
 
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+elif choice == "About":
+    st.subheader("About")
+    st.write("This is a simple Streamlit app created for demonstration purposes.")
 
-    if st.button("Login"):
-        cursor.execute(f"SELECT * FROM users WHERE username='{username}' AND password='{password}'")
-        result = cursor.fetchone()
-        if result:
-            level = result[2]
-            st.session_state["username"] = username
-            st.session_state["level"] = level
-            st.success(f"Logged in as {username}")
-            st.write(f"Level Akses: {level}")
-            redirect_to_page(level)
-        else:
-            st.error("Invalid credentials")
-
-def redirect_to_page(level):
-    # Redirect halaman berdasarkan level akses
-    if level == 'admin':
-        admin_panel()
-    elif level == 'Pemilik_toko':
-        pemilik_toko_panel()
-    else:
-        st.error("Level akses tidak valid")
-
-# Panggil fungsi main
-if __name__ == "__main__":
-    main()
+# Run the app using: streamlit run app.py
