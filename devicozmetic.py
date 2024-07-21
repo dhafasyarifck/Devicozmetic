@@ -7,10 +7,10 @@ from pemilik_toko import pemilik_toko_panel
 def create_connection():
     try:
         conn = mysql.connector.connect(
-            host="sql111.infinityfree.com",
-            user="if0_36944061",
-            password="SZ9Q2OQu9Lk83p",
-            database="if0_36944061_devicozmetic"
+            host="sql12.freemysqlhosting.net",
+            user="sql12721204",
+            password="t4itLMeUj2",
+            database="sql12721204"
         )
         if conn.is_connected():
             st.session_state["conn"] = conn
