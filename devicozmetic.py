@@ -5,10 +5,10 @@ from pemilik_toko import pemilik_toko_panel
 
 # Koneksi ke database
 conn = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="",  # Isi dengan password database Anda
-    database="devicozmetic"
+    host="sql111.infinityfree.com",
+    user="if0_36944061",
+    password="SZ9Q2OQu9Lk83p",  # Isi dengan password database Anda
+    database="if0_36944061_devicozmetic"
 )
 cursor = conn.cursor()
 
