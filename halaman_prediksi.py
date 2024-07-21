@@ -65,10 +65,10 @@ def show_halaman_prediksi():
     
     # Koneksi ke database MySQL
     conn = mysql.connector.connect(
-        host='localhost',
-        user='root',
-        password='',
-        database='devicozmetic'
+       host="sql12.freemysqlhosting.net",
+            user="sql12721204",
+            password="t4itLMeUj2",
+            database="sql12721204"
     )
     
     show_data_prediksi_produk(conn)
