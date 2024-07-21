@@ -5,10 +5,10 @@ import base64
 # Fungsi untuk koneksi ke database MySQL
 def connect_to_db():
     return mysql.connector.connect(
-        host='localhost',
-        user='root',
-        password='',
-        database='devicozmetic'
+        host="sql12.freemysqlhosting.net",
+            user="sql12721204",
+            password="t4itLMeUj2",
+            database="sql12721204"
     )
 
 # Fungsi untuk membaca data dari tabel analisis_barang
