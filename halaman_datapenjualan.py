@@ -39,10 +39,10 @@ def determine_popularity(df, threshold_jumlah, threshold_harga):
 def save_to_db(df, penjualan_produk):
     try:
         conn = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='',
-            database='devicozmetic'  # Ganti dengan nama database Anda
+            host="sql12.freemysqlhosting.net",
+            user="sql12721204",
+            password="t4itLMeUj2",
+            database="sql12721204"
         )
         cursor = conn.cursor()
         
