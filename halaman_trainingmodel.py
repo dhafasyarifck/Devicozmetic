@@ -134,6 +134,10 @@ def show_halaman_trainingmodel():
         features = ['Jumlah_Penjualan', 'Harga_Awal', 'Total Diskon', 'Rating','Total Harga Produk']
         target = 'Status'
         
+        if target not in df.columns:
+            st.error(f"Kolom target '{target}' tidak ditemukan dalam dataset.")
+            return
+        
         # Memisahkan fitur dan target
         X = df[features]
         y = df[target]
